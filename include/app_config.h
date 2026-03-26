@@ -51,8 +51,8 @@ enum class LedMode : uint8_t {
 
 enum class SwitcherType : uint8_t {
   VMIX = 0,
-  OBS  = 1,
-  ATEM = 2
+    OBS,
+    ATEM
 };
 
 struct DeviceConfig {
@@ -62,7 +62,9 @@ struct DeviceConfig {
   String vmixIp;
   uint16_t vmixPort = AppConfig::DEFAULT_VMIX_PORT;
   uint8_t channel = AppConfig::DEFAULT_CHANNEL;
-  SwitcherType type = SwitcherType::VMIX;
+  SwitcherType type;
+  const char* host = nullptr;
+  uint16_t port = 0;
 };
 
 inline bool isValidConfig(const DeviceConfig& config) {
