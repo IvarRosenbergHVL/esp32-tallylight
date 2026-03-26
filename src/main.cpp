@@ -1,3 +1,6 @@
+// ESP32 Tally Light - Main Application
+// Open source, MIT License
+// Provides main firmware logic for WiFi, config portal, provider-abstraksjon og LED-styring
 #include <Arduino.h>
 #include <WiFi.h>
 
@@ -5,13 +8,14 @@
 #include "led_controller.h"
 #include "settings_store.h"
 #include "wifi_portal.h"
-#include "vmix_client.h"
+#include "tally_provider.h"
+#include "providers/provider_factory.h"
 #include "tally_logic.h"
 
 LedController led;
 SettingsStore settingsStore;
 WifiPortal wifiPortal;
-VmixClient vmixClient;
+ITallyProvider* provider = nullptr;
 
 DeviceConfig config;
 
@@ -60,13 +64,15 @@ void setup() {
   Serial.begin(115200);
   delay(1000);
 
+  pinMode(AppConfig::Pins::BUTTON_RESET, INPUT_PULLUP);
+
   led.begin();
   led.showBoot();
   delay(500);
   led.showOff();
 
   Serial.println();
-  Serial.println("ESP32 vMix Tally");
+  Serial.println("ESP32 Tally Light");
 
   const bool hasConfig = settingsStore.load(config);
 
@@ -87,19 +93,33 @@ void setup() {
     }
   }
 
-  vmixClient.begin(config);
+  provider = ProviderFactory::create(config);
+  provider->begin(config);
 
   Serial.print("[CFG] Device name: ");
   Serial.println(config.deviceName);
-  Serial.print("[CFG] vMix IP: ");
-  Serial.println(config.vmixIp);
-  Serial.print("[CFG] vMix port: ");
-  Serial.println(config.vmixPort);
+  Serial.print("[CFG] Switcher type: ");
+  Serial.println(static_cast<int>(config.type));
   Serial.print("[CFG] Channel: ");
   Serial.println(config.channel);
 }
 
 void loop() {
+  // Reset button: hold GPIO 7 for 3 seconds to factory reset
+  static unsigned long resetPressMs = 0;
+  if (digitalRead(AppConfig::Pins::BUTTON_RESET) == LOW) {
+    if (resetPressMs == 0) {
+      resetPressMs = millis();
+    } else if (millis() - resetPressMs >= AppConfig::RESET_HOLD_TIME_MS) {
+      Serial.println("[RESET] Factory reset triggered");
+      settingsStore.clear();
+      delay(500);
+      ESP.restart();
+    }
+  } else {
+    resetPressMs = 0;
+  }
+
   if (WiFi.status() != WL_CONNECTED) {
     led.showConnecting();
     led.loop();
@@ -115,18 +135,20 @@ void loop() {
         ESP.restart();
       }
 
-      vmixClient.begin(config);
+      if (provider) { delete provider; provider = nullptr; }
+      provider = ProviderFactory::create(config);
+      provider->begin(config);
     }
 
     return;
   }
 
-  vmixClient.loop();
+  provider->loop();
 
   const LedMode mode = TallyLogic::map(
     WiFi.status() == WL_CONNECTED,
-    vmixClient.isConnected(),
-    vmixClient.getTallyState()
+    provider->isConnected(),
+    provider->getState()
   );
 
   led.setMode(mode);
