@@ -11,6 +11,7 @@ bool SettingsStore::load(DeviceConfig& config) {
   config.vmixIp = prefs_.getString("vmixIp", "");
   config.vmixPort = prefs_.getUShort("vmixPort", AppConfig::DEFAULT_VMIX_PORT);
   config.channel = prefs_.getUChar("channel", AppConfig::DEFAULT_CHANNEL);
+  config.type = static_cast<SwitcherType>(prefs_.getUChar("switcherType", static_cast<uint8_t>(SwitcherType::VMIX)));
 
   prefs_.end();
   return isValidConfig(config);
@@ -27,6 +28,7 @@ bool SettingsStore::save(const DeviceConfig& config) {
   prefs_.putString("vmixIp", config.vmixIp);
   prefs_.putUShort("vmixPort", config.vmixPort);
   prefs_.putUChar("channel", config.channel);
+  prefs_.putUChar("switcherType", static_cast<uint8_t>(config.type));
 
   prefs_.end();
   return true;

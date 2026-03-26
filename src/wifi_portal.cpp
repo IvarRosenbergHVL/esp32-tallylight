@@ -1,3 +1,6 @@
+// ESP32 Tally Light - WiFi Config Portal
+// Open source, MIT License
+// Web-basert konfigurasjonsportal for førstegangsoppsett og fallback
 #include "wifi_portal.h"
 
 WifiPortal::WifiPortal() : server_(80), saved_(false) {}
@@ -27,9 +30,9 @@ bool WifiPortal::validate(DeviceConfig& config) const {
   if (config.deviceName.isEmpty()) return false;
   if (config.wifiSsid.isEmpty()) return false;
   if (config.wifiPassword.isEmpty()) return false;
-  if (config.vmixIp.isEmpty()) return false;
   if (config.vmixPort == 0) return false;
   if (config.channel < 1 || config.channel > 99) return false;
+  if (config.type == SwitcherType::VMIX && config.vmixIp.isEmpty()) return false;
   return true;
 }
 
@@ -45,11 +48,19 @@ void WifiPortal::handleRoot() {
   html += "form{max-width:520px;margin:auto;background:#1b1b1b;padding:20px;border-radius:12px;}";
   html += "label{display:block;margin-top:14px;margin-bottom:6px;}";
   html += "input{width:100%;padding:10px;border-radius:8px;border:1px solid #444;background:#222;color:#fff;}";
+  html += "select{width:100%;padding:10px;border-radius:8px;border:1px solid #444;background:#222;color:#fff;}";
   html += "button{margin-top:20px;padding:12px 16px;border:none;border-radius:8px;background:#2d6cdf;color:#fff;font-weight:bold;width:100%;}";
   html += "small{color:#bbb;display:block;margin-top:6px;}";
   html += "</style></head><body>";
   html += "<form method='POST' action='/save'>";
   html += "<h2>ESP32 Tally Setup</h2>";
+
+  html += "<label>Switcher type</label>";
+  html += "<select name='switcherType'>";
+  html += String("<option value='0'") + (workingConfig_.type == SwitcherType::VMIX ? " selected" : "") + ">vMix</option>";
+  html += String("<option value='1'") + (workingConfig_.type == SwitcherType::OBS  ? " selected" : "") + ">OBS (coming soon)</option>";
+  html += String("<option value='2'") + (workingConfig_.type == SwitcherType::ATEM ? " selected" : "") + ">ATEM (coming soon)</option>";
+  html += "</select>";
 
   html += "<label>Device name</label>";
   html += "<input name='deviceName' value='" + htmlEscape(workingConfig_.deviceName) + "' required>";
@@ -84,6 +95,7 @@ void WifiPortal::handleSave() {
   newConfig.vmixIp = server_.arg("vmixIp");
   newConfig.vmixPort = static_cast<uint16_t>(server_.arg("vmixPort").toInt());
   newConfig.channel = static_cast<uint8_t>(server_.arg("channel").toInt());
+  newConfig.type = static_cast<SwitcherType>(server_.arg("switcherType").toInt());
 
   if (!validate(newConfig)) {
     server_.send(400, "text/html", "<h2>Invalid config</h2><p>Go back and fill all fields correctly.</p>");
