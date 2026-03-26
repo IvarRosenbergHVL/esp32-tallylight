@@ -25,7 +25,7 @@ namespace AppConfig {
   }
 
 // Timing
-#define RESET_HOLD_TIME_MS 3000
+  static constexpr uint32_t RESET_HOLD_TIME_MS = 3000;
 
   
   static constexpr uint32_t LED_BLINK_INTERVAL_MS = 400;
@@ -49,6 +49,12 @@ enum class LedMode : uint8_t {
   Error
 };
 
+enum class SwitcherType : uint8_t {
+  VMIX = 0,
+  OBS  = 1,
+  ATEM = 2
+};
+
 struct DeviceConfig {
   String deviceName;
   String wifiSsid;
@@ -56,13 +62,15 @@ struct DeviceConfig {
   String vmixIp;
   uint16_t vmixPort = AppConfig::DEFAULT_VMIX_PORT;
   uint8_t channel = AppConfig::DEFAULT_CHANNEL;
+  SwitcherType type = SwitcherType::VMIX;
 };
 
 inline bool isValidConfig(const DeviceConfig& config) {
-  return !config.deviceName.isEmpty() &&
-         !config.wifiSsid.isEmpty() &&
-         !config.wifiPassword.isEmpty() &&
-         !config.vmixIp.isEmpty() &&
-         config.vmixPort > 0 &&
-         config.channel >= 1;
+  if (config.deviceName.isEmpty()) return false;
+  if (config.wifiSsid.isEmpty()) return false;
+  if (config.wifiPassword.isEmpty()) return false;
+  if (config.vmixPort == 0) return false;
+  if (config.channel < 1) return false;
+  if (config.type == SwitcherType::VMIX && config.vmixIp.isEmpty()) return false;
+  return true;
 }

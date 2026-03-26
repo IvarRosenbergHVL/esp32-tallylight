@@ -4,5 +4,5 @@
 
 class TallyLogic {
 public:
-  static LedMode map(bool wifiConnected, bool vmixConnected, TallyState tallyState);
+  static LedMode map(bool wifiConnected, bool providerConnected, TallyState tallyState);
 };

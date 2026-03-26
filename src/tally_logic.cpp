@@ -1,7 +1,7 @@
 #include "tally_logic.h"
 
-LedMode TallyLogic::map(bool wifiConnected, bool vmixConnected, TallyState tallyState) {
-  if (!wifiConnected || !vmixConnected) {
+LedMode TallyLogic::map(bool wifiConnected, bool providerConnected, TallyState tallyState) {
+  if (!wifiConnected || !providerConnected) {
     return LedMode::Connecting;
   }
 
