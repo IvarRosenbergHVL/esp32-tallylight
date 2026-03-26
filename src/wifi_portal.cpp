@@ -71,11 +71,46 @@ void WifiPortal::handleRoot() {
   html += "<label>WiFi password</label>";
   html += "<input type='password' name='wifiPassword' value='" + htmlEscape(workingConfig_.wifiPassword) + "' required>";
 
-  html += "<label>vMix IP</label>";
-  html += "<input name='vmixIp' value='" + htmlEscape(workingConfig_.vmixIp) + "' required>";
 
+  // Dynamisk felter for switcher-type
+  html += "<div id='vmixFields' style='display:";
+  html += (workingConfig_.type == SwitcherType::VMIX ? "block" : "none");
+  html += "'>";
+  html += "<label>vMix IP</label>";
+  html += "<input name='vmixIp' value='" + htmlEscape(workingConfig_.vmixIp) + "'>";
   html += "<label>vMix port</label>";
-  html += "<input type='number' name='vmixPort' min='1' max='65535' value='" + String(workingConfig_.vmixPort) + "' required>";
+  html += "<input type='number' name='vmixPort' min='1' max='65535' value='" + String(workingConfig_.vmixPort) + "'>";
+  html += "</div>";
+
+  html += "<div id='obsFields' style='display:";
+  html += (workingConfig_.type == SwitcherType::OBS ? "block" : "none");
+  html += "'>";
+  html += "<label>OBS host/IP</label>";
+  html += "<input name='obsHost' value='" + htmlEscape(workingConfig_.vmixIp) + "'>";
+  html += "<label>OBS port</label>";
+  html += "<input type='number' name='obsPort' min='1' max='65535' value='" + String(workingConfig_.vmixPort) + "'>";
+  html += "</div>";
+
+  html += "<div id='atemFields' style='display:";
+  html += (workingConfig_.type == SwitcherType::ATEM ? "block" : "none");
+  html += "'>";
+  html += "<label>ATEM host/IP</label>";
+  html += "<input name='atemHost' value='" + htmlEscape(workingConfig_.vmixIp) + "'>";
+  html += "<label>ATEM port</label>";
+  html += "<input type='number' name='atemPort' min='1' max='65535' value='" + String(workingConfig_.vmixPort) + "'>";
+  html += "</div>";
+
+  html += "<script>\n";
+  html += "const typeSel=document.querySelector('[name=\'switcherType\']');\n";
+  html += "const vmix=document.getElementById('vmixFields');\n";
+  html += "const obs=document.getElementById('obsFields');\n";
+  html += "const atem=document.getElementById('atemFields');\n";
+  html += "typeSel.addEventListener('change',e=>{\n";
+  html += "  vmix.style.display=e.target.value==0?'block':'none';\n";
+  html += "  obs.style.display=e.target.value==1?'block':'none';\n";
+  html += "  atem.style.display=e.target.value==2?'block':'none';\n";
+  html += "});\n";
+  html += "<\/script>\n";
 
   html += "<label>Channel / input number</label>";
   html += "<input type='number' name='channel' min='1' max='99' value='" + String(workingConfig_.channel) + "' required>";
@@ -89,13 +124,30 @@ void WifiPortal::handleRoot() {
 
 void WifiPortal::handleSave() {
   DeviceConfig newConfig;
+
   newConfig.deviceName = server_.arg("deviceName");
   newConfig.wifiSsid = server_.arg("wifiSsid");
   newConfig.wifiPassword = server_.arg("wifiPassword");
-  newConfig.vmixIp = server_.arg("vmixIp");
-  newConfig.vmixPort = static_cast<uint16_t>(server_.arg("vmixPort").toInt());
   newConfig.channel = static_cast<uint8_t>(server_.arg("channel").toInt());
   newConfig.type = static_cast<SwitcherType>(server_.arg("switcherType").toInt());
+
+  // Hent relevante felter for valgt switcher
+  if (newConfig.type == SwitcherType::VMIX) {
+    newConfig.vmixIp = server_.arg("vmixIp");
+    newConfig.vmixPort = static_cast<uint16_t>(server_.arg("vmixPort").toInt());
+    newConfig.host = nullptr;
+    newConfig.port = 0;
+  } else if (newConfig.type == SwitcherType::OBS) {
+    newConfig.host = strdup(server_.arg("obsHost").c_str());
+    newConfig.port = static_cast<uint16_t>(server_.arg("obsPort").toInt());
+    newConfig.vmixIp = "";
+    newConfig.vmixPort = 0;
+  } else if (newConfig.type == SwitcherType::ATEM) {
+    newConfig.host = strdup(server_.arg("atemHost").c_str());
+    newConfig.port = static_cast<uint16_t>(server_.arg("atemPort").toInt());
+    newConfig.vmixIp = "";
+    newConfig.vmixPort = 0;
+  }
 
   if (!validate(newConfig)) {
     server_.send(400, "text/html", "<h2>Invalid config</h2><p>Go back and fill all fields correctly.</p>");
